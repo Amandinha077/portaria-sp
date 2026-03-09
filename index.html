@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SP - Controle de Portaria Profissional</title>
+<style>
+:root {
+  --primary: #9d6fff;
+  --primary-hover: #8e5ce6;
+  --secondary: #8bc34a;
+  --bg: #f5f6f8;
+  --sidebar: #1f293a;
+  --text: #374151;
+  --border: #e5e7eb;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; overflow: hidden; }
+
+/* Sidebar */
+.sidebar { width: 70px; background: var(--sidebar); display: flex; flex-direction: column; align-items: center; padding: 20px 0; }
+.logo-icon { width: 40px; height: 40px; background: var(--primary); border-radius: 8px; margin-bottom: 40px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 1.4rem; }
+.nav-item { color: #8e94a1; width: 100%; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+.nav-item.active { color: white; background: rgba(255,255,255,0.05); border-left: 4px solid var(--primary); }
+
+/* Main Wrapper */
+.main-wrapper { flex: 1; display: flex; flex-direction: column; }
+header { background: white; padding: 15px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.page-content { flex: 1; padding: 25px; overflow-y: auto; display: none; }
+.page-content.active { display: block; }
+
+.card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+h3 { margin-bottom: 20px; border-left: 5px solid var(--primary); padding-left: 10px; font-size: 1.1rem; }
+
+/* Formulário de Protocolo */
+.grid-reg { display: grid; grid-template-columns: 1fr 1.2fr; gap: 20px; }
+label { display: block; margin-bottom: 5px; font-size: 0.85rem; font-weight: 600; color: #666; }
+input, textarea { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; background: #fafafa; font-family: inherit; }
+textarea { resize: none; height: 80px; }
+
+.tipo-group { display: flex; gap: 10px; margin-bottom: 15px; }
+.tipo-btn { flex: 1; padding: 10px; border: 1px solid var(--border); background: white; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+.tipo-btn.active { border-color: var(--primary); color: var(--primary); background: #f5efff; font-weight: bold; }
+
+/* Camera Section */
+.cam-box { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 10px; overflow: hidden; position: relative; border: 1px solid #ddd; }
+video, #foto-preview { width: 100%; height: 100%; object-fit: cover; position: absolute; }
+.cam-controls { position: absolute; bottom: 10px; width: 100%; display: flex; justify-content: center; gap: 10px; z-index: 5; }
+.btn-action { padding: 8px 18px; border-radius: 20px; border: none; cursor: pointer; font-weight: 500; background: rgba(255,255,255,0.9); }
+
+/* Tabela Profissional */
+table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+th { text-align: left; padding: 12px; background: #f9fafb; border-bottom: 2px solid var(--border); color: #6b7280; font-size: 0.8rem; text-transform: uppercase; }
+td { padding: 12px; border-bottom: 1px solid #f2f2f2; font-size: 0.9rem; }
+.mini-photo { width: 45px; height: 45px; border-radius: 6px; object-fit: cover; border: 1px solid #eee; }
+.status-pill { padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; }
+.status-wait { background: #fee2e2; color: #dc2626; }
+.status-done { background: #dcfce7; color: #16a34a; }
+
+/* Área de Retirada */
+.retirada-box { margin-top: 25px; display: none; background: #fdfdfd; padding: 20px; border: 1px solid var(--border); border-radius: 12px; }
+#canvas-assinatura { border: 2px dashed #ccc; background: #fff; border-radius: 8px; cursor: crosshair; touch-action: none; width: 100%; max-width: 500px; }
+
+.btn-registrar { background: var(--primary); color: white; border: none; width: 100%; padding: 16px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+.btn-confirmar { background: var(--secondary); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo-icon">SP</div>
+  <div class="nav-item active" onclick="tab('reg')" id="nav-reg" title="Protocolar">🏠</div>
+  <div class="nav-item" onclick="tab('list')" id="nav-list" title="Encomendas">📦</div>
+</div>
+
+<div class="main-wrapper">
+  <header>
+    <div id="header-title" style="font-weight: 600; color: var(--sidebar);">Protocolo de Encomendas</div>
+    <button style="background:var(--primary); color:white; border:none; padding:8px 18px; border-radius:8px; cursor:pointer; font-size: 0.8rem;" onclick="location.reload()">Refrescar</button>
+  </header>
+
+  <div id="tab-reg" class="page-content active">
+    <div class="card">
+      <h3>Novo Protocolo</h3>
+      <div class="grid-reg">
+        <div>
+          <label>Morador (Busca por nome)</label>
+          <input type="text" id="morador" list="lista-moradores" placeholder="Digite o nome do morador...">
+          <datalist id="lista-moradores">
+            <option value="João Silva - Apt 105a">
+            <option value="Maria Oliveira - Apt 202b">
+            <option value="Carlos Souza - Apt 310">
+            <option value="Ana Costa - Apt 115a">
+          </datalist>
+
+          <label>Transportadora</label>
+          <input type="text" id="transportadora" placeholder="Ex: Shopee, Mercado Livre, iFood">
+
+          <label>Tipo de Volume</label>
+          <div class="tipo-group">
+            <button class="tipo-btn active" onclick="setTipo('Envelope', this)">Envelope</button>
+            <button class="tipo-btn" onclick="setTipo('Pacote', this)">Pacote</button>
+            <button class="tipo-btn" onclick="setTipo('Caixa', this)">Caixa</button>
+          </div>
+
+          <label>Observações do Protocolo</label>
+          <textarea id="obs" placeholder="Ex: Caixa levemente amassada, entregue para o porteiro reserva..."></textarea>
+
+          <button class="btn-registrar" onclick="salvar()">+ Registrar Entrada</button>
+        </div>
+
+        <div>
+          <label>Foto da Encomenda</label>
+          <div class="cam-box">
+            <video id="video" autoplay></video>
+            <img id="foto-preview" style="display:none">
+            <div class="cam-controls">
+              <button id="btn-foto" class="btn-action" onclick="capturar()">📸 Capturar Foto</button>
+              <button id="btn-reset" class="btn-action" style="display:none; color: red;" onclick="resetCam()">🔄 Refazer</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-list" class="page-content">
+    <div class="card">
+      <h3>Histórico e Retirada</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Foto</th>
+            <th>Morador / Unidade</th>
+            <th>Transportadora</th>
+            <th>Tipo</th>
+            <th>Data/Hora</th>
+            <th>Status</th>
+            <th>Ação</th>
+          </tr>
+        </thead>
+        <tbody id="lista-corpo"></tbody>
+      </table>
+
+      <div id="area-retirada" class="retirada-box">
+        <h3 style="border-color: var(--secondary);">Protocolo de Saída: <span id="unidade-sel" style="color: var(--secondary);">--</span></h3>
+        <p style="font-size: 0.85rem; margin-bottom: 12px;">Confirme a identidade e solicite a assinatura:</p>
+        <canvas id="canvas-assinatura" height="150"></canvas>
+        <div style="display: flex; gap: 15px; align-items: center; margin-top: 15px;">
+            <button class="btn-confirmar" onclick="finalizarRetirada()">Confirmar Retirada</button>
+            <button onclick="limparAss()" style="background:none; border:none; color:red; cursor:pointer; font-size: 0.9rem;">Limpar Quadro</button>
+            <button onclick="document.getElementById('area-retirada').style.display='none'" style="background:none; border:none; color:#999; cursor:pointer;">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let tipo = 'Envelope';
+let indexSelecionado = null;
+const video = document.getElementById('video');
+const preview = document.getElementById('foto-preview');
+const canvasCam = document.createElement('canvas');
+
+// Iniciar Câmera
+navigator.mediaDevices.getUserMedia({video:true}).then(s => video.srcObject = s);
+
+function tab(name) {
+  document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  document.getElementById('header-title').innerText = name === 'reg' ? 'Protocolo de Encomendas' : 'Gerenciamento de Entregas';
+  if(name === 'list') renderLista();
+}
+
+function setTipo(t, el) {
+  tipo = t;
+  document.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function capturar() {
+  canvasCam.width = video.videoWidth;
+  canvasCam.height = video.videoHeight;
+  canvasCam.getContext('2d').drawImage(video, 0, 0);
+  preview.src = canvasCam.toDataURL('image/jpeg');
+  preview.style.display = 'block';
+  document.getElementById('btn-foto').style.display = 'none';
+  document.getElementById('btn-reset').style.display = 'inline';
+}
+
+function resetCam() {
+  preview.style.display = 'none';
+  document.getElementById('btn-foto').style.display = 'inline';
+  document.getElementById('btn-reset').style.display = 'none';
+}
+
+function salvar() {
+  const morador = document.getElementById('morador').value;
+  const transportadora = document.getElementById('transportadora').value || 'Não informada';
+  const obs = document.getElementById('obs').value;
+
+  if(!morador || !preview.src) {
+    alert("Erro: Informe o morador e tire uma foto da encomenda.");
+    return;
+  }
+
+  const item = {
+    morador: morador,
+    transportadora: transportadora,
+    tipo: tipo,
+    obs: obs,
+    data: new Date().toLocaleString('pt-BR'),
+    foto: preview.src,
+    status: 'À ESPERA'
+  };
+
+  const lista = JSON.parse(localStorage.getItem('portaria_sp_v2') || '[]');
+  lista.unshift(item);
+  localStorage.setItem('portaria_sp_v2', JSON.stringify(lista));
+  
+  alert("Protocolo registrado com sucesso!");
+  
+  // Limpar campos
+  document.getElementById('morador').value = '';
+  document.getElementById('transportadora').value = '';
+  document.getElementById('obs').value = '';
+  resetCam();
+  tab('list');
+}
+
+function renderLista() {
+  const lista = JSON.parse(localStorage.getItem('portaria_sp_v2') || '[]');
+  const corpo = document.getElementById('lista-corpo');
+  corpo.innerHTML = '';
+
+  lista.forEach((item, i) => {
+    const isPendente = item.status === 'À ESPERA';
+    corpo.innerHTML += `
+      <tr>
+        <td><img src="${item.foto}" class="mini-photo"></td>
+        <td>
+          <strong>${item.morador}</strong><br>
+          <small style="color:#888">${item.obs ? 'Obs: ' + item.obs : ''}</small>
+        </td>
+        <td>${item.transportadora}</td>
+        <td>${item.tipo}</td>
+        <td><small>${item.data}</small></td>
+        <td><span class="status-pill ${isPendente ? 'status-wait' : 'status-done'}">${item.status}</span></td>
+        <td>
+          ${isPendente ? `<button onclick="abrirRetirada(${i}, '${item.morador}')" style="background:var(--primary); color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:0.8rem">Retirar</button>` : '<small style="color:green">Finalizado</small>'}
+        </td>
+      </tr>
+    `;
+  });
+}
+
+// Assinatura Digital
+const canvasAss = document.getElementById('canvas-assinatura');
+const ctx = canvasAss.getContext('2d');
+let desenhando = false;
+
+function abrirRetirada(index, info) {
+  indexSelecionado = index;
+  document.getElementById('unidade-sel').innerText = info;
+  document.getElementById('area-retirada').style.display = 'block';
+  limparAss();
+  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+}
+
+canvasAss.addEventListener('mousedown', () => desenhando = true);
+window.addEventListener('mouseup', () => { desenhando = false; ctx.beginPath(); });
+canvasAss.addEventListener('mousemove', (e) => {
+  if(!desenhando) return;
+  const rect = canvasAss.getBoundingClientRect();
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#222';
+  ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+  ctx.stroke();
+});
+
+// Suporte para Touch (Tablet)
+canvasAss.addEventListener('touchstart', (e) => { e.preventDefault(); desenhando = true; });
+canvasAss.addEventListener('touchend', () => { desenhando = false; ctx.beginPath(); });
+canvasAss.addEventListener('touchmove', (e) => {
+  if(!desenhando) return;
+  const rect = canvasAss.getBoundingClientRect();
+  const touch = e.touches[0];
+  ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+  ctx.stroke();
+});
+
+function limparAss() { ctx.clearRect(0, 0, canvasAss.width, canvasAss.height); ctx.beginPath(); }
+
+function finalizarRetirada() {
+  let lista = JSON.parse(localStorage.getItem('portaria_sp_v2'));
+  lista[indexSelecionado].status = 'RETIRADO';
+  lista[indexSelecionado].assinatura = canvasAss.toDataURL(); // Salva a assinatura no registro
+  
+  localStorage.setItem('portaria_sp_v2', JSON.stringify(lista));
+  document.getElementById('area-retirada').style.display = 'none';
+  alert("Retirada finalizada e registrada!");
+  renderLista();
+}
+</script>
+</body>
+</html>
