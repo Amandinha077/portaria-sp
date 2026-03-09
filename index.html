@@ -105,7 +105,7 @@ td { padding: 12px; border-bottom: 1px solid #f2f2f2; font-size: 0.9rem; }
           </div>
 
           <label>Observações do Protocolo</label>
-          <textarea id="obs" placeholder="Ex: Caixa levemente amassada, entregue para o porteiro reserva..."></textarea>
+          <textarea id="obs" placeholder="Ex: Caixa levemente amassada..."></textarea>
 
           <button class="btn-registrar" onclick="salvar()">+ Registrar Entrada</button>
         </div>
@@ -164,7 +164,9 @@ const video = document.getElementById('video');
 const preview = document.getElementById('foto-preview');
 const canvasCam = document.createElement('canvas');
 
-// Iniciar Câmera
+// --- CONFIGURAÇÃO DO WHATSAPP (LOCALTUNNEL) ---
+const URL_SERVIDOR_ZAP = "https://mighty-glasses-give.loca.lt";
+
 navigator.mediaDevices.getUserMedia({video:true}).then(s => video.srcObject = s);
 
 function tab(name) {
@@ -221,10 +223,18 @@ function salvar() {
   const lista = JSON.parse(localStorage.getItem('portaria_sp_v2') || '[]');
   lista.unshift(item);
   localStorage.setItem('portaria_sp_v2', JSON.stringify(lista));
+
+  // ENVIO PARA O WHATSAPP VIA VS CODE (LOCALTUNNEL)
+  fetch(`${URL_SERVIDOR_ZAP}/enviar-v2`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(item)
+  })
+  .then(() => console.log("Aviso enviado ao WhatsApp!"))
+  .catch(err => console.error("Erro ao avisar WhatsApp. Verifique o VS Code."));
+
+  alert("Protocolo registrado e aviso enviado!");
   
-  alert("Protocolo registrado com sucesso!");
-  
-  // Limpar campos
   document.getElementById('morador').value = '';
   document.getElementById('transportadora').value = '';
   document.getElementById('obs').value = '';
@@ -242,10 +252,7 @@ function renderLista() {
     corpo.innerHTML += `
       <tr>
         <td><img src="${item.foto}" class="mini-photo"></td>
-        <td>
-          <strong>${item.morador}</strong><br>
-          <small style="color:#888">${item.obs ? 'Obs: ' + item.obs : ''}</small>
-        </td>
+        <td><strong>${item.morador}</strong><br><small style="color:#888">${item.obs ? 'Obs: ' + item.obs : ''}</small></td>
         <td>${item.transportadora}</td>
         <td>${item.tipo}</td>
         <td><small>${item.data}</small></td>
@@ -268,7 +275,6 @@ function abrirRetirada(index, info) {
   document.getElementById('unidade-sel').innerText = info;
   document.getElementById('area-retirada').style.display = 'block';
   limparAss();
-  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 }
 
 canvasAss.addEventListener('mousedown', () => desenhando = true);
@@ -276,21 +282,8 @@ window.addEventListener('mouseup', () => { desenhando = false; ctx.beginPath(); 
 canvasAss.addEventListener('mousemove', (e) => {
   if(!desenhando) return;
   const rect = canvasAss.getBoundingClientRect();
-  ctx.lineWidth = 2;
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#222';
   ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-  ctx.stroke();
-});
-
-// Suporte para Touch (Tablet)
-canvasAss.addEventListener('touchstart', (e) => { e.preventDefault(); desenhando = true; });
-canvasAss.addEventListener('touchend', () => { desenhando = false; ctx.beginPath(); });
-canvasAss.addEventListener('touchmove', (e) => {
-  if(!desenhando) return;
-  const rect = canvasAss.getBoundingClientRect();
-  const touch = e.touches[0];
-  ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
   ctx.stroke();
 });
 
@@ -299,11 +292,9 @@ function limparAss() { ctx.clearRect(0, 0, canvasAss.width, canvasAss.height); c
 function finalizarRetirada() {
   let lista = JSON.parse(localStorage.getItem('portaria_sp_v2'));
   lista[indexSelecionado].status = 'RETIRADO';
-  lista[indexSelecionado].assinatura = canvasAss.toDataURL(); // Salva a assinatura no registro
-  
   localStorage.setItem('portaria_sp_v2', JSON.stringify(lista));
   document.getElementById('area-retirada').style.display = 'none';
-  alert("Retirada finalizada e registrada!");
+  alert("Retirada finalizada!");
   renderLista();
 }
 </script>
